@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
+import 'react-lazy-load-image-component/src/effects/blur.css';
 
 const ImageContainer = styled.div`
   position: relative;
@@ -24,9 +25,9 @@ const ButtonContainer = styled.div`
   gap: 10px;
 `;
 
-const Button = styled.button`
+const ActionButton = styled.button`
   padding: 8px 16px;
-  background-color: ${props => props.delete ? '#dc3545' : '#007bff'};
+  background-color: ${props => (props.$delete ? '#dc3545' : '#007bff')};
   color: white;
   border: none;
   border-radius: 5px;
@@ -76,7 +77,7 @@ const ModalButton = styled.button`
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  background-color: ${props => props.confirm ? '#dc3545' : '#6c757d'};
+  background-color: ${props => (props.confirm ? '#dc3545' : '#6c757d')};
   color: white;
 
   &:hover {
@@ -89,12 +90,12 @@ const ModalButton = styled.button`
   }
 `;
 
-const PhotoPreview = ({ photo, category, date, onDelete, photoId }) => {
+const PhotoPreview = ({ photo, photoId, category, date, onDelete }) => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const SERVER_URL = 'http://192.168.50.212:5000';
+  const SERVER_URL = process.env.REACT_APP_SERVER_URL;
   const thumbnailUrl = `${SERVER_URL}/${photo.thumbnail_path}`;
   const fullImageUrl = `${SERVER_URL}/${photo.filepath}`;
 
@@ -124,13 +125,12 @@ const PhotoPreview = ({ photo, category, date, onDelete, photoId }) => {
       console.error('No photo ID provided for deletion');
       return;
     }
-
     setIsDeleting(true);
     try {
       await onDelete();
       setShowDeleteConfirmation(false);
-    } catch (error) {
-      console.error('Error deleting photo:', error);
+    } catch (err) {
+      console.error('Error deleting photo:', err);
     } finally {
       setIsDeleting(false);
     }
@@ -138,9 +138,10 @@ const PhotoPreview = ({ photo, category, date, onDelete, photoId }) => {
 
   return (
     <ImageContainer>
-      <StyledLazyImage 
+      <StyledLazyImage
         src={thumbnailUrl}
         threshold={100}
+        effect="blur"
         beforeLoad={() => setImageLoaded(false)}
         afterLoad={() => setImageLoaded(true)}
         style={{ opacity: imageLoaded ? 1 : 0.5 }}
@@ -148,31 +149,24 @@ const PhotoPreview = ({ photo, category, date, onDelete, photoId }) => {
         alt={`${category} photo from ${date}`}
       />
       <ButtonContainer>
-        <Button onClick={handleDownload}>
+        <ActionButton onClick={handleDownload}>
           Download
-        </Button>
-        <Button delete onClick={handleDelete} disabled={isDeleting}>
+        </ActionButton>
+        <ActionButton $delete onClick={handleDelete} disabled={isDeleting}>
           {isDeleting ? 'Deleting...' : 'Delete'}
-        </Button>
+        </ActionButton>
       </ButtonContainer>
 
       {showDeleteConfirmation && (
         <ConfirmationModal onClick={() => setShowDeleteConfirmation(false)}>
-          <ModalContent onClick={e => e.stopPropagation()}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
             <h3>Delete Photo?</h3>
             <p>Are you sure you want to delete this photo? This action cannot be undone.</p>
             <ModalButtons>
-              <ModalButton 
-                onClick={() => setShowDeleteConfirmation(false)}
-                disabled={isDeleting}
-              >
+              <ModalButton onClick={() => setShowDeleteConfirmation(false)} disabled={isDeleting}>
                 Cancel
               </ModalButton>
-              <ModalButton 
-                confirm 
-                onClick={confirmDelete}
-                disabled={isDeleting}
-              >
+              <ModalButton confirm onClick={confirmDelete} disabled={isDeleting}>
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </ModalButton>
             </ModalButtons>

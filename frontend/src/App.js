@@ -1,12 +1,12 @@
+// src/App.js
 import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
 import CategoryButtons from './components/CategoryButtons';
 import DatePickerComponent from './components/DatePicker';
 import CameraControls from './components/CameraControls';
 import PhotoPreview from './components/PhotoPreview';
-import styled from 'styled-components';
-import { useTheme } from './ThemeContext';
-
-const SERVER_URL = 'http://192.168.50.212:5000';
+import { useTheme } from './contexts/ThemeContext';
+import { apiFetch } from './utils/api';
 
 const Container = styled.div`
   padding: 20px;
@@ -16,7 +16,7 @@ const Container = styled.div`
   background-color: ${props => props.theme.background};
   color: ${props => props.theme.text};
   transition: all 0.3s ease;
-  
+
   @media (max-width: 768px) {
     padding: 10px;
     padding-bottom: 80px;
@@ -27,12 +27,11 @@ const StatusMessage = styled.div`
   margin: 10px 0;
   padding: 10px;
   border-radius: 5px;
-  color: ${props => props.error ? props.theme.error : props.theme.success};
-  background-color: ${props => props.error ? 
-    'rgba(220, 53, 69, 0.1)' : 'rgba(40, 167, 69, 0.1)'};
-  border: 1px solid ${props => props.error ? 
-    props.theme.error : props.theme.success};
-  display: ${props => props.message ? 'block' : 'none'};
+  color: ${props => (props.error ? props.theme.error : props.theme.success)};
+  background-color: ${props =>
+    props.error ? 'rgba(220, 53, 69, 0.1)' : 'rgba(40, 167, 69, 0.1)'};
+  border: 1px solid ${props => (props.error ? props.theme.error : props.theme.success)};
+  display: ${props => (props.message ? 'block' : 'none')};
 `;
 
 const PhotoGrid = styled.div`
@@ -40,7 +39,7 @@ const PhotoGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 20px;
   margin-top: 20px;
-  
+
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -50,7 +49,7 @@ const PhotoGrid = styled.div`
 const Title = styled.h1`
   color: ${props => props.theme.text};
   margin-bottom: 20px;
-  
+
   @media (max-width: 768px) {
     font-size: 24px;
     margin-bottom: 15px;
@@ -61,12 +60,6 @@ const LoadingSpinner = styled.div`
   margin: 20px 0;
   color: ${props => props.theme.primary};
   font-weight: bold;
-`;
-
-const CategoryPrompt = styled.p`
-  color: ${props => props.theme.textSecondary};
-  margin: 15px 0;
-  font-size: 16px;
 `;
 
 const PhotoCount = styled.div`
@@ -104,7 +97,7 @@ const ThemeToggle = styled.button`
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  
+
   &:hover {
     opacity: 0.9;
   }
@@ -147,18 +140,10 @@ const App = () => {
       setLoading(true);
       setError(null);
       const formattedDate = selectedDate.toISOString().split('T')[0];
-      const response = await fetch(
-        `${SERVER_URL}/api/photos?category=${category}&date=${formattedDate}`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch photos');
-      }
-      
-      const data = await response.json();
+      const data = await apiFetch(`/api/photos?category=${category}&date=${formattedDate}`);
       setPhotos(data.photos || []);
-    } catch (error) {
-      console.error('Fetch error:', error);
+    } catch (err) {
+      console.error('Fetch error:', err);
       setError('Error loading photos. Please try again.');
     } finally {
       setLoading(false);
@@ -177,7 +162,6 @@ const App = () => {
       setIsUploading(true);
       setError(null);
       setSuccess(null);
-
       setSuccess(`Successfully uploaded ${filepaths.length} photo${filepaths.length > 1 ? 's' : ''}!`);
       await fetchPhotos();
     } catch (error) {
@@ -197,18 +181,11 @@ const App = () => {
 
   const handleDeletePhoto = async (photoId) => {
     try {
-      const response = await fetch(`${SERVER_URL}/api/photos/${photoId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete photo');
-      }
-
+      await apiFetch(`/api/photos/${photoId}`, { method: 'DELETE' });
       setSuccess('Photo deleted successfully');
       await fetchPhotos();
-    } catch (error) {
-      setError('Error deleting photo: ' + error.message);
+    } catch (err) {
+      setError('Error deleting photo: ' + err.message);
     }
   };
 
@@ -219,28 +196,19 @@ const App = () => {
       </ThemeToggle>
 
       <Title theme={theme}>CopyManifests</Title>
-      
-      <CategoryButtons 
-        onSelectCategory={handleSelectCategory} 
-        selectedCategory={category}
-        theme={theme}
-      />
-      
-      <DatePickerComponent 
-        selectedDate={selectedDate} 
-        onChange={handleDateChange}
-        theme={theme}
-      />
-      
+
+      <CategoryButtons onSelectCategory={handleSelectCategory} selectedCategory={category} />
+
+      <DatePickerComponent selectedDate={selectedDate} onChange={handleDateChange} />
+
       {category ? (
         <>
-          <CameraControls 
+          <CameraControls
             onCapture={handleCapturePhoto}
             disabled={loading || !category || isUploading}
             category={category}
             selectedDate={selectedDate}
             isUploading={isUploading}
-            theme={theme}
           />
           {photos.length > 0 && (
             <div>
@@ -254,15 +222,11 @@ const App = () => {
           )}
         </>
       ) : (
-        <CategoryPrompt theme={theme}>Please select a category first</CategoryPrompt>
+        <p>Please select a category first</p>
       )}
 
       {(error || success) && (
-        <StatusMessage 
-          error={!!error} 
-          message={error || success}
-          theme={theme}
-        >
+        <StatusMessage error={!!error} message={error || success} theme={theme}>
           {error || success}
         </StatusMessage>
       )}
@@ -272,14 +236,13 @@ const App = () => {
       {showPhotos && (
         <PhotoGrid>
           {photos.map((photo, index) => (
-            <PhotoPreview 
-              key={photo.id || index} 
+            <PhotoPreview
+              key={photo.id || index}
               photo={photo}
               photoId={photo.id}
-              category={category}
+              category={category || ''}
               date={selectedDate.toISOString().split('T')[0]}
               onDelete={() => handleDeletePhoto(photo.id)}
-              theme={theme}
             />
           ))}
         </PhotoGrid>

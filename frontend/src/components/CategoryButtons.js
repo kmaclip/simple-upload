@@ -1,6 +1,7 @@
+// src/components/CategoryButtons.js
 import React from 'react';
 import styled from 'styled-components';
-import { useTheme } from '../ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Button = styled.button`
   padding: 10px 20px;
